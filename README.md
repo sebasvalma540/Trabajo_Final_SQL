@@ -14,4 +14,15 @@ Este es el proyecto final de mi curso de SQL
 
 ### Comandos basicos
 En la primera semana mi profesor nos enseño mucho
+sobre SELECT 
 
+- Esta fue la primera consulta que hicimos en el curso
+
+``` SQL
+SELECT *
+FROM MI_TABLA;
+```
+
+```
+
+```
