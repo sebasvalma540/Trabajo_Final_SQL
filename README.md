@@ -283,26 +283,17 @@ En este análisis, ayudo al área comercial de MegaMart a responder lo siguiente
 
 4. Autorizamos descuentos de 0%, 5%, 10% y 15%, pero no sé con qué frecuencia se aplican. Quiero ver cuántas operaciones y cuántas unidades salen con cada nivel, y qué porcentaje del total representa el descuento máximo. 
 
-5. Antes de armar la campaña del próximo trimestre, quiero los 10 productos que más dinero dejan por unidad vendida (precio menos costo), sin importar todavía cuánto rotan.
+5. Antes de armar la campaña del próximo trimestre, quiero comparar cuánto deja cada producto por unidad vendida en dos escenarios: precio de lista (sin descuento) versus el precio real que se cobró en cada transacción (con descuento). Dame los 10 productos con mayor utilidad promedio real, mostrando ambas cifras lado a lado para ver cuánto se pierde por los descuentos aplicados.
+
 6. Esta es la tabla que abre el comité. Necesito venta neta y margen bruto por tienda y región en todo el histórico, para decidir dónde reforzamos dotación y dónde revisamos el modelo de operación.
 
 7. ¿Dónde está el valor por operación? Quiero comparar el ticket promedio y las unidades por transacción entre categorías y subcategorías, porque sospecho que Groceries genera mucho volumen pero poco valor. 
 
 8. Voy a rediseñar la comunicación por segmento. Necesito agrupar a los clientes en rangos de edad (menos de 30, 30 a 44, 45 a 59, 60 o más) calculados a la fecha de hoy, y ver cuánto compra cada segmento por género.
 
-9. Quiero definir los turnos y las promociones por día. Muéstrame la venta neta por mes calendario y, dentro de cada mes, cuánto pesa el fin de semana frente a los días de semana.
+9. Quiero definir los turnos y las promociones por día. Muéstrame la venta neta por mes calendario y, dentro de cada mes, cuánto pesa el fin de semana frente a los días de semana, usando la información de la dimensión de tiempo del modelo.
 
-10. Necesito saber qué productos del catálogo nunca se vendieron y qué clientes registrados nunca compraron. Eso define qué descontinuamos y a quién metemos en campaña de activación.
-
-11. Para la negociación con proveedores necesito los 3 productos líderes de cada categoría por venta neta, y qué porcentaje de la venta de su categoría representa cada uno. Quiero saber qué tan dependientes somos de pocos SKU.
-
-12. Quiero la serie mensual de venta neta con la variación respecto al mes anterior y el acumulado del año en curso. Es el gráfico que llevo a directorio cada mes.
-
-13. Tengo dos años completos de historia. Compárame el periodo sep-2023 a ago-2024 contra sep-2024 a ago-2025 por región y categoría, y dime dónde crecimos y dónde retrocedimos.
-
-14. Quiero un tablero de clientes que combine cuánto hace que no compran, cuántas veces compraron y cuánto gastaron, clasificados en Activo, En riesgo y Dormido, y divididos en cuartiles de gasto. Con eso armo la campaña de retención del trimestre.
-
-15. Necesito saber si los clientes que captamos en 2024 valen más o menos que los de 2023. Agrúpalos por el mes en que se registraron y muéstrame cuántos llegaron a comprar, cuánto tardaron en hacer su primera compra y cuánto gastan en promedio.
+10. ¿De dónde sale realmente mi facturación? Quiero saber cuánto pesan las compras chicas frente a las grandes, para decidir si la prioridad es aumentar el ticket o traer más gente.
 
 ## Desarrollo de Tareas
 
