@@ -47,12 +47,13 @@ El modelo cuenta con una estructura en estrella, estableciendo relaciones de uno
 - Comandos basicos
 - Agregaciones
 - Joins
-    - left join
-    - right join 
-    - inner join
 - Subconsultas
 - Funciones de ventana
-
+    - over ()
+    - over (partition by )
+- Getdate ()
+- Datediff
+- Case when 
 
 ## Creación de la Base de Datos y Tablas
 
@@ -232,22 +233,22 @@ Se verificó la existencia de valores faltantes en los campos clave de las tabla
 
 ```sql
 -- Verificar valores faltantes en DIM_CLIENTES --
-SELECT COUNT(*) AS MissingValues
+SELECT COUNT(*) AS Numero_De_Nulls
 FROM DIM_CLIENTES
 WHERE IDCliente IS NULL;
 
 -- Verificar valores faltantes en DIM_PRODUCTOS --
-SELECT COUNT(*) AS MissingValues
+SELECT COUNT(*) AS Numero_De_Nulls
 FROM DIM_PRODUCTOS
 WHERE IDProducto IS NULL;
 
 -- Verificar valores faltantes en DIM_TIENDAS --
-SELECT COUNT(*) AS MissingValues
+SELECT COUNT(*) AS Numero_De_Nulls
 FROM DIM_TIENDAS
 WHERE IDTienda IS NULL;
 
 -- Verificar valores faltantes en FACT_TRANSAC --
-SELECT COUNT(*) AS MissingValues
+SELECT COUNT(*) AS Numero_De_Nulls
 FROM FACT_TRANSAC
 WHERE IDTransaccion IS NULL
     OR IDCliente IS NULL
@@ -255,50 +256,305 @@ WHERE IDTransaccion IS NULL
     OR IDTienda IS NULL;
 ```
 
-A continuación, se verificó que no existan filas duplicadas en los campos clave. No se encontraron duplicados.
+A continuación, se verificó que no existan filas duplicadas en el campo clave osea la el IDTransaccion de la tabla FACT_TRANSAC. No se encontraron duplicados ya que segun el CSV debe tener 5000 IDTransaccion distintos
 
 ```sql
--- Verificar valores duplicados en DIM_CLIENTES --
-SELECT IDCliente, COUNT(*)
-FROM DIM_CLIENTES
-GROUP BY IDCliente
-HAVING COUNT(*) > 1;
-
 -- Verificar valores duplicados en FACT_TRANSAC --
-SELECT IDTransaccion, COUNT(*)
-FROM FACT_TRANSAC
-GROUP BY IDTransaccion
-HAVING COUNT(*) > 1;
+with TB_Duplicados as (
+	SELECT  IDTransaccion, COUNT(*) AS Total_ID
+	from FACT_TRANSAC
+	GROUP BY IDTransaccion
+	having COUNT(*) = 1 
+	)
+select sum(Total_ID) as Total_Valores_Unicos
+from TB_Duplicados
 ```
-
+![alt text](<Pictures/Verificación de duplicados.png>)
 
 ## Tareas
 
 En este análisis, ayudo al área comercial de MegaMart a responder lo siguiente:
 
-1. ¿Cuáles son los productos y categorías que generan más ventas y utilidad?
-2. ¿Cuál es la tendencia de ventas a lo largo del tiempo (mensual, trimestral, anual)?
-3. ¿Qué tiendas y regiones tienen mejor desempeño en ventas?
-4. ¿Cómo se distribuyen las ventas según el género y la ciudad de los clientes?
-5. ¿Cuál es el ticket promedio (venta promedio por transacción) por tienda?
-6. ¿Cuál es el impacto de los descuentos aplicados en el volumen de ventas?
-7. ¿Cuáles son los métodos de pago más utilizados por los clientes?
-8. ¿Cuál es la antigüedad promedio de los clientes según su fecha de registro?
-9. ¿Qué categorías de productos tienen mayor margen de utilidad (precio unitario - costo)?
-10. ¿Quiénes son los clientes con mayor volumen de compra (top clientes)?
+1. ¿Con qué surtido estamos trabajando realmente? Necesito saber cuántos productos tengo por categoría, y en qué rango de precios se mueve cada una, porque estamos discutiendo si el catálogo está desbalanceado hacia Electronics.
 
+2. ¿En qué ciudades se concentra mi base de clientes? Quiero enfocar el presupuesto de marketing local solo en ciudades con masa crítica, así que muéstrame únicamente las que tengan más de 2 clientes registrados.
+
+3. Estamos renegociando comisiones con el banco adquirente. Necesito el peso de cada método de pago en número de transacciones y en unidades vendidas para entrar a esa reunión con cifras.
+
+4. Autorizamos descuentos de 0%, 5%, 10% y 15%, pero no sé con qué frecuencia se aplican. Quiero ver cuántas operaciones y cuántas unidades salen con cada nivel, y qué porcentaje del total representa el descuento máximo. 
+
+5. Antes de armar la campaña del próximo trimestre, quiero los 10 productos que más dinero dejan por unidad vendida (precio menos costo), sin importar todavía cuánto rotan.
+6. Esta es la tabla que abre el comité. Necesito venta neta y margen bruto por tienda y región en todo el histórico, para decidir dónde reforzamos dotación y dónde revisamos el modelo de operación.
+
+7. ¿Dónde está el valor por operación? Quiero comparar el ticket promedio y las unidades por transacción entre categorías y subcategorías, porque sospecho que Groceries genera mucho volumen pero poco valor. 
+
+8. Voy a rediseñar la comunicación por segmento. Necesito agrupar a los clientes en rangos de edad (menos de 30, 30 a 44, 45 a 59, 60 o más) calculados a la fecha de hoy, y ver cuánto compra cada segmento por género.
+
+9. Quiero definir los turnos y las promociones por día. Muéstrame la venta neta por mes calendario y, dentro de cada mes, cuánto pesa el fin de semana frente a los días de semana.
+
+10. Necesito saber qué productos del catálogo nunca se vendieron y qué clientes registrados nunca compraron. Eso define qué descontinuamos y a quién metemos en campaña de activación.
+
+11. Para la negociación con proveedores necesito los 3 productos líderes de cada categoría por venta neta, y qué porcentaje de la venta de su categoría representa cada uno. Quiero saber qué tan dependientes somos de pocos SKU.
+
+12. Quiero la serie mensual de venta neta con la variación respecto al mes anterior y el acumulado del año en curso. Es el gráfico que llevo a directorio cada mes.
+
+13. Tengo dos años completos de historia. Compárame el periodo sep-2023 a ago-2024 contra sep-2024 a ago-2025 por región y categoría, y dime dónde crecimos y dónde retrocedimos.
+
+14. Quiero un tablero de clientes que combine cuánto hace que no compran, cuántas veces compraron y cuánto gastaron, clasificados en Activo, En riesgo y Dormido, y divididos en cuartiles de gasto. Con eso armo la campaña de retención del trimestre.
+
+15. Necesito saber si los clientes que captamos en 2024 valen más o menos que los de 2023. Agrúpalos por el mes en que se registraron y muéstrame cuántos llegaron a comprar, cuánto tardaron en hacer su primera compra y cuánto gastan en promedio.
 
 ## Desarrollo de Tareas
 
-### Pregunta #1: ¿Cuáles son los productos y categorías que generan más ventas y utilidad?
+1. ¿Con qué surtido estamos trabajando realmente? Necesito saber cuántos productos tengo por categoría y subcategoría, y en qué rango de precios se mueve cada una, porque estamos discutiendo si el catálogo está desbalanceado hacia Electronics.
 
 ```sql
-SELECT 
-    p.Categoria,
-    SUM(f.Cantidad * p.PrecioUnitario) AS VentasTotales,
-    SUM(f.Cantidad * (p.PrecioUnitario - p.PrecioCosto)) AS UtilidadTotal
-FROM FACT_TRANSAC f
-INNER JOIN DIM_PRODUCTOS p ON f.IDProducto = p.IDProducto
-GROUP BY p.Categoria
-ORDER BY VentasTotales DESC;
+SELECT Categoria,
+		count(*) as Total_Productos,
+		Max(PrecioUnitario) as PrecioMaximo,
+		Avg(PrecioUnitario) as PrecioPromedio,
+		Min(PrecioUnitario) as PrecioMinimo,
+		100 *count(*) / sum(count(*)) over () as PorcentajeTotal 
+FROM DIM_PRODUCTOS
+GROUP BY Categoria
+ORDER BY Categoria ASC
 ```
+![alt text](Pictures/P1.png)
+
+Fashion concentra el 48% de los productos (24 SKU), Electronics el 36% (18) y Groceries solo el 16% (8). El catálogo sí está desbalanceado, pero hacia Fashion, no hacia Electronics como se pensaba.
+
+----------------------------------------------------------------------------------------
+2. ¿En qué ciudades se concentra el volumen de ventas de mi negocio? Quiero enfocar el presupuesto de marketing local solo en ciudades con masa crítica de actividad comercial, así que muéstrame únicamente las que registren más de 30 ventas (transacciones).
+
+```sql
+SELECT DC.Ciudad,
+		COUNT(DC.IDCliente) AS TOTAL_VENTAS
+FROM FACT_TRANSAC FT
+INNER JOIN DIM_CLIENTES DC ON FT.IDCliente = DC.IDCliente
+GROUP BY DC.Ciudad 
+HAVING COUNT(DC.IDCliente) > 30
+``` 
+![alt text](Pictures/P2.png)
+
+Solo 25 de las 200 ciudades superan las 30 transacciones, con un máximo de 36. Cada ciudad tiene un solo cliente, así que este conteo mide la frecuencia de compra individual y no concentración geográfica.
+
+------------------------------------------------------------------------------------------
+3. Estamos renegociando comisiones con el banco adquirente. Necesito el peso de cada método de pago en número de transacciones y en unidades vendidas para entrar a esa reunión con cifras.
+
+```sql
+SELECT MetodoPago,
+       COUNT(IDTransaccion) AS Total_Transacciones,
+       SUM(Cantidad) AS Total_Cantidad_Vendida,
+       ROUND(100.0 * COUNT(IDTransaccion) / SUM(COUNT(IDTransaccion)) OVER(), 2) AS Peso_Transacciones_Percent,
+       ROUND(100.0 * SUM(Cantidad) / SUM(SUM(Cantidad)) OVER(), 2) AS Peso_Cantidad_Percent
+FROM FACT_TRANSAC
+GROUP BY MetodoPago
+ORDER BY Total_Transacciones DESC;
+```
+![alt text](Pictures/P3.png)
+
+Los cuatro métodos de pago están empatados: Cash 25.68%, Credit Card 25.62%, Mobile Money 25.52% y Bank Transfer 23.18%. Al no depender de ningún medio en particular, la cadena tiene margen para negociar comisiones.
+
+------------------------------------------------------------------------------------------
+4. Autorizamos descuentos de 0%, 5%, 10% y 15%, pero no sé con qué frecuencia se aplican. Quiero ver cuántas operaciones y cuántas unidades salen con cada nivel, y qué porcentaje del total representa el descuento máximo. 
+
+```sql
+SELECT Descuento,
+		COUNT(IDTransaccion) AS NumeroTransaccione ,
+		SUM(Cantidad) AS TotalCantidad,
+		CAST(ROUND(100.0 * COUNT(IDTransaccion) / SUM(COUNT(IDTransaccion)) OVER(), 2) AS decimal(10,2)) AS Peso_NumTransac_Percent,
+        CAST(ROUND(100.0 * SUM(Cantidad) / SUM(SUM(Cantidad)) OVER(), 2) AS decimal(10,2)) AS Peso_TotalCantidad_Percent
+FROM FACT_TRANSAC
+GROUP BY Descuento
+order by Descuento desc
+```
+![alt text](Pictures/P4.png)
+
+El descuento del 15% es el más aplicado de todos, con 26.48% de las operaciones. Solo una de cada cuatro ventas se hace a precio de lista, lo que indica que el descuento máximo se convirtió en la norma y no en la excepción.
+
+-----------------------------------------------------------------------------------------
+
+5. Antes de armar la campaña del próximo trimestre, quiero comparar cuánto deja cada producto por unidad vendida en dos escenarios: precio de lista (sin descuento) versus el precio real que se cobró en cada transacción (con descuento). Dame los 10 productos con mayor utilidad promedio real, mostrando ambas cifras lado a lado para ver cuánto se pierde por los descuentos aplicados.
+
+```sql
+-- Sin descuento
+SELECT Distinct TOP 10
+		NombreProducto,
+		(PrecioUnitario - PrecioCosto) as Utilida_por_Unidad
+FROM DIM_PRODUCTOS
+order by Utilida_por_Unidad DESC
+```
+![alt text](Pictures/P5.1.png)
+..................................................................................
+
+```sql
+-- Con descuento
+with TB_Utilidad_Promedio as (
+	SELECT  DP.NombreProducto,
+			round(AVG(((DP.PrecioUnitario * (1.0-Ft.Descuento)) - DP.PrecioCosto)) over (partition by NombreProducto), 2) as Promedio_Utilidad_NombreProducto
+	FROM FACT_TRANSAC FT 
+	INNER JOIN DIM_PRODUCTOS DP ON FT.IDProducto = DP.IDProducto
+	)
+select top 10 NombreProducto , Promedio_Utilidad_NombreProducto
+from TB_Utilidad_Promedio
+GROUP BY NombreProducto, Promedio_Utilidad_NombreProducto
+ORDER BY Promedio_Utilidad_NombreProducto desc
+```
+![alt text](Pictures/P5.2.png)
+
+Set Dairy lidera a precio de lista (874.52) pero cae al segundo lugar en utilidad real (726.39) por efecto del descuento. La pérdida por descuentos va de 15.5% a 22.2%, siendo Present Television el producto más castigado.
+
+------------------------------------------------------------------------------------------
+6. Esta es la tabla que abre el comité. Necesito venta neta y margen bruto por tienda y región en todo el histórico, para decidir dónde reforzamos dotación y dónde revisamos el modelo de operación.
+
+```sql
+SELECT NombreTienda,
+		Region, 
+		SUM(Venta_Neta_Transac) as Venta_Total,
+		SUM(Utilidad_Bruta_Tienda) as Utilidad_Total,
+		round(SUM(Utilidad_Bruta_Tienda) / SUM(Venta_Neta_Transac), 3) as Margen_Bruto_Utilidad
+FROM (SELECT DT.NombreTienda,
+			DT.Region,
+			FT.Cantidad,
+			FT.Descuento,
+			DP.PrecioUnitario,
+			DP.PrecioCosto,
+			(FT.Cantidad * DP.PrecioUnitario * (1.0 - FT.Descuento)) AS Venta_Neta_Transac,
+			((((1.0-FT.Descuento)*DP.PrecioUnitario) - DP.PrecioCosto)*FT.Cantidad) as Utilidad_Bruta_Tienda
+	from FACT_TRANSAC FT 
+	INNER JOIN DIM_TIENDAS DT ON  FT.IDTienda = DT.IDTienda
+	INNER JOIN DIM_PRODUCTOS DP ON DP.IDProducto = FT.IDProducto) AS TB_TIENDA_VENTA
+GROUP BY NombreTienda, Region
+ORDER BY Margen_Bruto_Utilidad DESC
+```
+![alt text](Pictures/P6.png)
+
+Las cinco tiendas tienen márgenes casi iguales, entre 26.2% y 27.5%. New Michele lidera en venta y margen, mientras Peckmouth queda última en ambos con una brecha de 6% frente al líder.
+
+--------------------------------------------------------------------------------------
+
+7. ¿Dónde está el valor por operación? Quiero comparar el ticket promedio y las unidades por transacción entre categorías y subcategorías, porque sospecho que Groceries genera mucho volumen pero poco valor. 
+
+```sql
+SELECT DP.Categoria,
+       DP.SubCategoria,
+       COUNT(FT.IDTransaccion) as Total_Transacciones,
+       SUM(FT.Cantidad) as Total_Unidades,
+       ROUND(AVG(FT.Cantidad * DP.PrecioUnitario * (1.0 - FT.Descuento)), 2) as Ticket_Promedio,
+       ROUND(AVG(CAST(FT.Cantidad as FLOAT)), 2) as Unidades_Por_Transaccion
+FROM FACT_TRANSAC FT
+INNER JOIN DIM_PRODUCTOS DP ON FT.IDProducto = DP.IDProducto
+GROUP BY DP.Categoria, DP.SubCategoria
+ORDER BY DP.Categoria, Ticket_Promedio DESC;
+```
+![alt text](Pictures/P7.png)
+
+Los tickets más altos están en Television (4,179) y Camera (4,010), y Dairy sorprende en tercer lugar (3,794). Las unidades por transacción son planas en todas las subcategorías (2.90 a 3.18), así que las diferencias de ticket vienen del precio del producto y no de que la gente compre más cantidad.
+
+------------------------------------------------------------------------------------------
+
+8. Voy a rediseñar la comunicación por segmento. Necesito agrupar a los clientes en rangos de edad (menos de 30, 30 a 44, 45 a 59, 60 o más) calculados a la fecha de hoy, y ver cuánto compra cada segmento por género.
+
+```sql
+WITH TB_EDAD as (
+    SELECT IDCliente,
+           Genero,
+           DATEDIFF(YEAR, FechaNacimiento, GETDATE())
+             - CASE 
+					WHEN (MONTH(FechaNacimiento) > MONTH(GETDATE())) OR (MONTH(FechaNacimiento) = MONTH(GETDATE()) AND DAY(FechaNacimiento) > DAY(GETDATE()))
+						THEN 1 
+					ELSE 0 END as Edad
+    FROM DIM_CLIENTES
+),
+TB_SEGMENTO as (
+    SELECT IDCliente,
+           Genero,
+           CASE
+               WHEN Edad < 30 THEN 'Menos de 30'
+               WHEN Edad BETWEEN 30 AND 44 THEN '30 a 44'
+               WHEN Edad BETWEEN 45 AND 59 THEN '45 a 59'
+               ELSE '60 o más'
+           END as SegmentoEdad
+    FROM TB_EDAD
+)
+SELECT TS.SegmentoEdad,
+       TS.Genero,
+       COUNT(DISTINCT TS.IDCliente) as Total_Clientes,
+       ROUND(SUM(FT.Cantidad * DP.PrecioUnitario * (1.0 - FT.Descuento)), 2) as Venta_Neta_Total
+FROM TB_SEGMENTO TS
+INNER JOIN FACT_TRANSAC FT ON FT.IDCliente = TS.IDCliente
+INNER JOIN DIM_PRODUCTOS DP ON DP.IDProducto = FT.IDProducto
+GROUP BY TS.SegmentoEdad, TS.Genero
+ORDER BY CASE TS.SegmentoEdad
+             WHEN 'Menos de 30' THEN 1
+             WHEN '30 a 44' THEN 2
+             WHEN '45 a 59' THEN 3
+             ELSE 4
+         END,
+         TS.Genero;
+```
+![alt text](Pictures/P8.png)
+
+La venta por cliente es casi idéntica en todos los segmentos, entre 70,066 y 74,185. Las diferencias de venta total se explican por cuántos clientes tiene cada grupo, no por cuánto compra cada uno, así que edad y género no sirven para segmentar.
+
+9. Quiero definir los turnos y las promociones por día. Muéstrame la venta neta por mes calendario y, dentro de cada mes, cuánto pesa el fin de semana frente a los días de semana, usando la información de la dimensión de tiempo del modelo.
+
+```sql
+WITH TB_BASE as (
+    SELECT
+        DT.AñoMes,
+        DT.EsFinDeSemana,
+        FT.Cantidad * DP.PrecioUnitario * (1.0 - FT.Descuento) as VentaNeta
+    FROM FACT_TRANSAC FT
+    INNER JOIN DIM_PRODUCTOS DP ON DP.IDProducto = FT.IDProducto
+    INNER JOIN DIM_TIEMPO DT ON DT.ClaveFecha = FT.ClaveFecha
+)
+SELECT AñoMes,
+       CASE 
+			WHEN EsFinDeSemana = 'VERDADERO' 
+				THEN 'Fin de Semana' 
+			ELSE 'Entre Semana' 
+				END AS TipoDia,
+       ROUND(SUM(VentaNeta), 2) as Venta_Neta,
+       ROUND(100.0 * SUM(VentaNeta) / SUM(SUM(VentaNeta)) OVER (PARTITION BY AñoMes), 2) as Peso_Dentro_Mes_Percent
+FROM TB_BASE
+GROUP BY AñoMes, EsFinDeSemana
+ORDER BY AñoMes, TipoDia;
+```
+![alt text](Pictures/P9.png)
+
+El fin de semana aporta 28.7% de la venta y representa 28.6% de los días del periodo. Vende exactamente lo que le corresponde por cantidad de días, así que no existe efecto fin de semana.
+
+10. ¿De dónde sale realmente mi facturación? Quiero saber cuánto pesan las compras chicas frente a las grandes, para decidir si la prioridad es aumentar el ticket o traer más gente.
+
+```sql
+SELECT
+    CASE
+        WHEN FT.Cantidad <= 2 THEN 'Compra chica (1-2 und)'
+        WHEN FT.Cantidad =  3 THEN 'Compra media (3 und)'
+        ELSE 'Compra grande (4-5 und)'
+    END AS TamanoCompra,
+    COUNT(*) as TotalTransacciones,
+    SUM(FT.Cantidad) as UnidadesVendidas,
+    ROUND(SUM(FT.Cantidad * DP.PrecioUnitario * (1 - FT.Descuento)), 2) as VentaNeta,
+    ROUND(SUM(FT.Cantidad * DP.PrecioUnitario * (1 - FT.Descuento)) / COUNT(*), 2) as TicketPromedio,
+    ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 1) as PctTransacciones,
+    ROUND(100.0 * SUM(FT.Cantidad * DP.PrecioUnitario * (1 - FT.Descuento)) / SUM(SUM(FT.Cantidad * DP.PrecioUnitario * (1 - FT.Descuento))) OVER (), 1) as PctVenta
+FROM FACT_TRANSAC FT
+INNER JOIN DIM_PRODUCTOS DP ON FT.IDProducto = DP.IDProducto
+GROUP BY
+    CASE
+        WHEN FT.Cantidad <= 2 THEN 'Compra chica (1-2 und)'
+        WHEN FT.Cantidad =  3 THEN 'Compra media (3 und)'
+        ELSE 'Compra grande (4-5 und)'
+    END
+ORDER BY VentaNeta DESC;
+```
+![alt text](Pictures/P10.png)
+
+Las compras de 4 a 5 unidades son el 39.6% de las transacciones pero generan el 59.5% de la venta. La prioridad debe ser aumentar el tamaño de compra mediante venta cruzada, no traer más clientes.
+
+
+
+
+
